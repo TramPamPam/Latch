@@ -153,7 +153,7 @@ public struct Latch {
     public func data(forKey key: String) -> Data? {
         var query = baseQuery(forKey: key)
         query[kSecMatchLimit] = kSecMatchLimitOne
-        query[kSecReturnData] = true
+        query[kSecReturnData] = true as AnyObject?
 
         var dataRef: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &dataRef)
@@ -198,22 +198,22 @@ public struct Latch {
     Set an NSData blob for a given key.
     */
     @discardableResult public func set(object: Data, forKey key: String) -> Bool {
-        var query = baseQuery(forKey: key)
+        var query: [NSString : AnyObject] = baseQuery(forKey: key)
 
         var update = [NSString : AnyObject]()
-        update[kSecValueData] = object
+        update[kSecValueData] = object as AnyObject?
         update[kSecAttrAccessible] = state.accessibility.rawValue
 
         var status = errSecSuccess
         if data(forKey: key) != nil { // Data already exists, we're updating not writing.
-            status = SecItemUpdate(query, update)
+            status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
         }
         else { // No existing data, write a new item.
             for (key, value) in update {
                 query[key] = value
             }
 
-            status = SecItemAdd(query, nil)
+            status = SecItemAdd(query as CFDictionary, nil)
         }
 
         if status != errSecSuccess {
@@ -231,7 +231,7 @@ public struct Latch {
         let query = baseQuery(forKey: key)
 
         if data(forKey: key) != nil {
-            let status = SecItemDelete(query)
+            let status = SecItemDelete(query as CFDictionary)
             if status != errSecSuccess {
                 print("Latch failed to remove data for key '\(key)', error: \(status)")
                 return false
@@ -249,8 +249,8 @@ public struct Latch {
     iOS and watchOS.
     */
     @discardableResult public func resetKeychain() -> Bool {
-        let query = [kSecClass : kSecClassGenericPassword]
-        let status = SecItemDelete(query)
+        let query: [String: AnyObject] = [kSecClass as String : kSecClassGenericPassword]
+        let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess {
             print("Latch failed to reset keychain, error: \(status)")
             return false
@@ -265,11 +265,11 @@ public struct Latch {
     private func baseQuery(forKey key: String) -> [NSString : AnyObject] {
         var query = [NSString : AnyObject]()
         if !state.service.isEmpty {
-            query[kSecAttrService] = state.service
+            query[kSecAttrService] = state.service as AnyObject?
         }
         query[kSecClass] = kSecClassGenericPassword
-        query[kSecAttrAccount] = key
-        query[kSecAttrGeneric] = key
+        query[kSecAttrAccount] = key as AnyObject?
+        query[kSecAttrGeneric] = key as AnyObject?
 
         #if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
         // Ignore the access group if running on the iPhone simulator.
